@@ -1,0 +1,38 @@
+{
+  "name": "cli-website-downloader",
+  "version": "1.0.0",
+  "description": "Download the complete source code of any website (including all assets) from the command line.",
+  "license": "MIT",
+  "author": "Ahmed Ibrahim <me@ahmed-ibrahim.com>",
+  "bin": {
+    "website-downloader": "./bin/cli.js"
+  },
+  "engines": {
+    "node": ">=14.14.0"
+  },
+  "files": [
+    "bin/cli.js",
+    "lib/",
+    "LICENSE.md",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node bin/cli.js --help"
+  },
+  "dependencies": {
+    "archiver": "^3.1.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AhmadIbrahiim/Website-downloader.git"
+  },
+  "keywords": [
+    "website",
+    "downloader",
+    "wget",
+    "cli",
+    "website-downloader",
+    "offline",
+    "mirror"
+  ]
+}
