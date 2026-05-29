@@ -5,7 +5,7 @@
   "license": "MIT",
   "author": "Ahmed Ibrahim <me@ahmed-ibrahim.com>",
   "bin": {
-    "website-downloader": "./bin/cli.js"
+    "website-downloader": "bin/cli.js"
   },
   "engines": {
     "node": ">=14.14.0"
@@ -25,7 +25,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Im-Busy/cli-website-downloader.git"
+    "url": "git+https://github.com/Im-Busy/cli-website-downloader.git"
   },
   "keywords": [
     "website",
