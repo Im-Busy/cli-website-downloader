@@ -2,7 +2,7 @@
 'use strict';
 
 const path = require('path');
-const { download, cleanup, getFolderName } = require('../lib/wget');
+const { download, cleanup, getFolderName } = require('../lib/downloader');
 const { zip } = require('../lib/archiver');
 
 const VERSION = require('../package.json').version;
@@ -17,18 +17,18 @@ Usage:
 Options:
   -o, --output <dir>    Output directory for the zip file (default: current directory)
   -n, --name <name>     Custom name for the output zip file (default: website hostname)
+  -d, --depth <n>       Max recursion depth for following links (default: 1)
+  --no-recursive        Download only the given page, do not follow links
   --no-zip              Skip zipping, just download the files
   --no-cleanup          Keep the downloaded website folder after zipping
-  --wget-args <args>    Additional arguments to pass to wget (comma-separated)
   -v, --version         Show version number
   -h, --help            Show this help message
 
 Examples:
   website-downloader https://example.com
-  website-downloader https://example.com -o ./downloads
-  website-downloader https://example.com -n my-site --no-cleanup
-  website-downloader https://example.com --wget-args "--wait=1,--limit-rate=500k"
-  website-downloader https://example.com --no-zip
+  website-downloader https://example.com -o ./downloads -d 3
+  website-downloader https://example.com -n my-site --no-recursive
+  website-downloader https://example.com --no-zip --no-cleanup
 `);
   process.exit(0);
 }
@@ -45,7 +45,8 @@ function parseArgs(argv) {
     name: null,
     zip: true,
     cleanup: true,
-    extraArgs: [],
+    depth: 1,
+    recursive: true,
     help: false,
     version: false,
   };
@@ -70,14 +71,18 @@ function parseArgs(argv) {
       case '--name':
         options.name = argv[++i] || '';
         break;
+      case '-d':
+      case '--depth':
+        options.depth = parseInt(argv[++i], 10) || 1;
+        break;
+      case '--no-recursive':
+        options.recursive = false;
+        break;
       case '--no-zip':
         options.zip = false;
         break;
       case '--no-cleanup':
         options.cleanup = false;
-        break;
-      case '--wget-args':
-        options.extraArgs = (argv[++i] || '').split(',').map((s) => s.trim()).filter(Boolean);
         break;
       default:
         if (!arg.startsWith('-') && !options.url) {
@@ -109,24 +114,15 @@ function main() {
     process.exit(1);
   }
 
+  const outputDir = path.resolve(options.output, siteName);
   const zipPath = path.resolve(options.output, `${siteName}.zip`);
   const startTime = Date.now();
   let lastProgress = '';
-  let wgetProcess = null;
 
   const handleInterrupt = () => {
     console.log('\n\nCancelled by user.');
-
-    if (wgetProcess) {
-      wgetProcess.kill('SIGTERM');
-    }
-
-    const siteFolder = options.name || getFolderName(options.url);
-    if (siteFolder) {
-      cleanup(siteFolder);
-      cleanup(zipPath);
-    }
-
+    cleanup(outputDir);
+    cleanup(zipPath);
     process.exit(130);
   };
 
@@ -135,37 +131,26 @@ function main() {
 
   console.log(`\nDownloading: ${options.url}`);
   console.log(`Output: ${zipPath}`);
-  if (options.extraArgs.length) {
-    console.log(`Extra wget args: ${options.extraArgs.join(' ')}`);
-  }
+  console.log(`Depth: ${options.recursive ? options.depth : 'none (single page)'}`);
   console.log('');
 
-  wgetProcess = download(options.url, {
-    extraArgs: options.extraArgs,
-    onProgress: (text) => {
-      const lines = text.trim().split('\n');
-      for (const line of lines) {
-        if (line.trim()) {
-          const trimmed = line.trim();
-          if (trimmed !== lastProgress) {
-            lastProgress = trimmed;
-            process.stdout.write(`\r  ${trimmed.substring(0, 80)}`);
-          }
-        }
+  download(options.url, {
+    directory: outputDir,
+    depth: options.depth,
+    recursive: options.recursive,
+    onProgress: (msg) => {
+      if (msg !== lastProgress) {
+        lastProgress = msg;
+        process.stdout.write(`\r  ${msg}`);
       }
     },
-    onComplete: (folder, err) => {
-      // Remove interrupt handler after wget completes — archiver handles its own cleanup
+    onComplete: (dir, err) => {
       process.removeListener('SIGINT', handleInterrupt);
       process.removeListener('SIGTERM', handleInterrupt);
 
       if (err) {
         console.error(`\n\nError downloading: ${err.message}`);
-        process.exit(1);
-      }
-
-      if (!folder) {
-        console.error('\n\nError: Could not determine downloaded folder name.');
+        cleanup(outputDir);
         process.exit(1);
       }
 
@@ -173,13 +158,13 @@ function main() {
       console.log(`\n\nDownload complete in ${elapsed}s`);
 
       if (!options.zip) {
-        console.log(`Website saved to: ${path.resolve(folder)}`);
+        console.log(`Website saved to: ${dir}`);
         return;
       }
 
       console.log(`Compressing to: ${zipPath}`);
 
-      zip(folder, zipPath, {
+      zip(outputDir, zipPath, {
         onProgress: (msg) => {
           process.stdout.write(`\r  ${msg}`);
         },
@@ -194,9 +179,9 @@ function main() {
           console.log(`Total time: ${totalTime}s`);
 
           if (options.cleanup) {
-            cleanup(folder);
+            cleanup(outputDir);
           } else {
-            console.log(`Website folder kept at: ${path.resolve(folder)}`);
+            console.log(`Website folder kept at: ${outputDir}`);
           }
 
           process.exit(0);
@@ -208,14 +193,8 @@ function main() {
       });
     },
     onError: (err) => {
-      if (err.code === 'ENOENT') {
-        console.error('\n\nError: wget is not installed. Please install wget first:');
-        console.error('  Windows: choco install wget  or  scoop install wget');
-        console.error('  macOS:   brew install wget');
-        console.error('  Linux:   apt install wget  or  yum install wget');
-      } else {
-        console.error(`\n\nError: ${err.message}`);
-      }
+      console.error(`\n\nError: ${err.message}`);
+      cleanup(outputDir);
       process.exit(1);
     },
   });
