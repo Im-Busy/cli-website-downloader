@@ -3,3 +3,10 @@ node_modules/
 
 # Build artifacts
 dist/
+
+# ===== PUBLIC REPO EXCLUSIONS =====
+# IDE configs — never tracked
+.claude/
+.opencode/
+.gitnexus/
+.cgcignore

@@ -1,0 +1,18 @@
+# Whitelist for public repo sync
+# cli-website-downloader — private development → public mirror
+
+# === Source Code ===
+bin/
+lib/
+
+# === Public Documentation ===
+README.md
+LICENSE.md
+
+# === Public Config ===
+.gitignore
+package.json
+package-lock.json
+
+# === Scripts ===
+scripts/
