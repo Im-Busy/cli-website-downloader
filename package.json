@@ -1,7 +1,7 @@
 {
   "name": "cli-website-downloader",
   "version": "1.0.0",
-  "description": "Download the complete source code of any website (including all assets) from the command line. No system dependencies — just Node.js.",
+  "description": "Node.js CLI to download public HTML pages and supported same-host assets, with optional recursive crawling and ZIP output.",
   "license": "MIT",
   "author": "Ahmed Ibrahim <me@ahmed-ibrahim.com>",
   "bin": {
